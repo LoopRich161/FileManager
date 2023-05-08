@@ -3,6 +3,7 @@ package ru.looprich.filemanager.utils
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 import android.webkit.MimeTypeMap
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -12,6 +13,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import ru.looprich.filemanager.R
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.attribute.BasicFileAttributes
 import java.text.SimpleDateFormat
 import kotlin.math.log10
 import kotlin.math.pow
@@ -43,6 +46,17 @@ fun getTextSize(size: Long): String {
     return String.format("%.1f %s", size / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
 }
 
+// -----------------------------------------------------------------------------------------------------------------
+fun getFileCreationTime(file: File): Long {
+    return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        Files.readAttributes(
+            file.toPath(),
+            BasicFileAttributes::class.java
+        ).creationTime().toMillis()
+    } else {
+        -1
+    }
+}
 
 // -----------------------------------------------------------------------------------------------------------------
 fun getMimeTypeFromFile(file: File): String? {

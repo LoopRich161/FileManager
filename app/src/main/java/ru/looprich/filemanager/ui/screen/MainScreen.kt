@@ -16,10 +16,9 @@ import ru.looprich.filemanager.R
 import ru.looprich.filemanager.ui.FileItem
 import ru.looprich.filemanager.ui.FolderItem
 import ru.looprich.filemanager.ui.UpFolderItem
+import ru.looprich.filemanager.utils.getFileCreationTime
 import java.io.File
 import java.io.FileFilter
-import java.nio.file.Files
-import java.nio.file.attribute.BasicFileAttributes
 
 // -----------------------------------------------------------------------------------------------------------------
 @Composable
@@ -141,12 +140,7 @@ fun getComparator(sortCriteria: SortCriteria, sortOrder: SortOrder): Comparator<
     return when (sortCriteria) {
         SortCriteria.NAME -> compareBy<File> { it.name }
         SortCriteria.SIZE -> compareBy<File> { it.length() }
-        SortCriteria.DATE -> compareBy<File> {
-            Files.readAttributes(
-                it.toPath(),
-                BasicFileAttributes::class.java
-            ).creationTime().toMillis()
-        }
+        SortCriteria.DATE -> compareBy<File> { getFileCreationTime(it) }
         SortCriteria.TYPE -> compareBy<File> { it.name.substringAfterLast(".") }
     }.let { comparator ->
         if (sortOrder == SortOrder.DESCENDING) comparator.reversed() else comparator

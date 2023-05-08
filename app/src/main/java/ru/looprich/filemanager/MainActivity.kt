@@ -20,6 +20,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.looprich.filemanager.database.entity.FileEntity
+import ru.looprich.filemanager.ext.md5
 import ru.looprich.filemanager.ui.screen.MainScreen
 import ru.looprich.filemanager.ui.theme.FileManagerTheme
 import java.io.File
@@ -46,7 +47,6 @@ class MainActivity : AppCompatActivity() {
         } else {
             lifecycleScope.launch {
                 withContext(Dispatchers.IO) {
-                    println("Start scan... " + System.currentTimeMillis())
                     val files = scanFiles(Environment.getExternalStorageDirectory())
                     files.forEach {
                         val path = it.absolutePath
@@ -64,7 +64,6 @@ class MainActivity : AppCompatActivity() {
                             app.filesDao.insertFile(newEntity)
                         }
                     }
-                    println("End scan... " + System.currentTimeMillis())
                 }
 
             }

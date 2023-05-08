@@ -31,15 +31,8 @@ fun FileItem(
     file: File,
     lifecycleScope: LifecycleCoroutineScope
 ) {
-    val fileIcon = getIconForFile(fileName = file.name)
-
-    val size = getTextSize(file.length())
-    val lastModified = dateFormat.format(file.lastModified())
-
-    val fileEntity = MainActivity.app.filesDao.getFileByPath(file.absolutePath)
+    val fileEntity = MainActivity.app.filesDao.getFileByPath(path = file.absolutePath)
     val isModified = if (fileEntity != null) {
-        println("path: ${file.absolutePath}, oldHash: ${fileEntity.oldHash}, newHash: ${fileEntity.newHash}")
-
         if (fileEntity.oldHash == null)
             false
         else
@@ -47,8 +40,14 @@ fun FileItem(
     } else {
         false
     }
+    val modifiedText = if (isModified) " | обновлен" else ""
 
+    val fileIcon = getIconForFile(fileName = file.name)
 
+    val size = getTextSize(size = file.length())
+
+    val creationTime = getFileCreationTime(file = file)
+    val creationTimeText = if (creationTime != -1L) " | " + dateFormat.format(creationTime) else ""
 
     Row(
         modifier = Modifier
@@ -76,7 +75,7 @@ fun FileItem(
                 fontWeight = FontWeight.Bold
             )
             Text(
-                text = "$size | $lastModified" + if (isModified) " | обновлен" else "",
+                text = "$size $creationTimeText $modifiedText",
                 fontSize = 14.sp
             )
         }

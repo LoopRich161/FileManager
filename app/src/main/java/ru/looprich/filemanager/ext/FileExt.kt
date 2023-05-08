@@ -1,4 +1,4 @@
-package ru.looprich.filemanager
+package ru.looprich.filemanager.ext
 
 import java.io.File
 import java.security.MessageDigest
