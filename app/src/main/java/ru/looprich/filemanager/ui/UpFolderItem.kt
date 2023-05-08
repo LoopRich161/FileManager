@@ -30,7 +30,7 @@ fun UpFolderItem(onClick: () -> Unit) {
             modifier = Modifier.size(32.dp)
         )
         Text(
-            text = "Up",
+            text = "Вверх",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(start = 8.dp)

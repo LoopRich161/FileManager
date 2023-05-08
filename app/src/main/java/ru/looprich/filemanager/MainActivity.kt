@@ -3,8 +3,9 @@ package ru.looprich.filemanager
 import android.Manifest
 import android.content.pm.PackageManager
 import android.os.Bundle
-import androidx.activity.ComponentActivity
+import android.os.Environment
 import androidx.activity.compose.setContent
+import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Button
 import androidx.compose.material.Text
@@ -14,28 +15,80 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import ru.looprich.filemanager.database.entity.FileEntity
 import ru.looprich.filemanager.ui.screen.MainScreen
 import ru.looprich.filemanager.ui.theme.FileManagerTheme
+import java.io.File
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
 
     // -----------------------------------------------------------------------------------------------------------------
     private val readPermission = Manifest.permission.READ_EXTERNAL_STORAGE
     private val readPermissionRequestCode = 161
 
     // -----------------------------------------------------------------------------------------------------------------
+    companion object {
+        lateinit var app: App
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        app = application as App
 
         if (!hasReadPermission()) {
             requestReadPermission()
         } else {
+            lifecycleScope.launch {
+                withContext(Dispatchers.IO) {
+                    println("Start scan... " + System.currentTimeMillis())
+                    val files = scanFiles(Environment.getExternalStorageDirectory())
+                    files.forEach {
+                        val path = it.absolutePath
+                        val oldEntity = app.filesDao.getFileByPath(path)
+                        val newHash = it.md5()
+
+                        val newEntity: FileEntity = if (oldEntity != null) {
+                            val oldHash = oldEntity.newHash
+                            FileEntity(path = path, oldHash = oldHash, newHash = newHash)
+                        } else {
+                            FileEntity(path = path, oldHash = null, newHash = newHash)
+                        }
+
+                        if (!newEntity.oldHash.equals(newEntity.newHash)) {
+                            app.filesDao.insertFile(newEntity)
+                        }
+                    }
+                    println("End scan... " + System.currentTimeMillis())
+                }
+
+            }
+
             setContent {
                 FileManagerTheme {
                     MainScreen()
                 }
             }
+
         }
+    }
+
+    // -----------------------------------------------------------------------------------------------------------------
+    private suspend fun scanFiles(directory: File): List<File> = withContext(Dispatchers.IO) {
+        val files = mutableListOf<File>()
+        directory.listFiles()?.forEach { file ->
+            if (file.isDirectory) {
+                files.addAll(scanFiles(file))
+            } else if (!file.isHidden) {
+                files.add(file)
+            }
+        }
+        return@withContext files
     }
 
     // -----------------------------------------------------------------------------------------------------------------

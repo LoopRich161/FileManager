@@ -1,49 +1,65 @@
 package ru.looprich.filemanager.ui
 
+import android.content.Context
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import ru.looprich.filemanager.utils.dateFormat
-import ru.looprich.filemanager.utils.getIconForFile
+import androidx.lifecycle.LifecycleCoroutineScope
+import ru.looprich.filemanager.MainActivity
+import ru.looprich.filemanager.R
+import ru.looprich.filemanager.utils.*
 import java.io.File
 
 // -----------------------------------------------------------------------------------------------------------------
 @Composable
 fun FileItem(
-    file: File
+    context: Context,
+    file: File,
+    lifecycleScope: LifecycleCoroutineScope
 ) {
-    val fileSize = file.length().toFloat() / 1024 / 1024
+    val fileIcon = getIconForFile(fileName = file.name)
 
-    val size = "%.2f MB".format(fileSize);
+    val size = getTextSize(file.length())
     val lastModified = dateFormat.format(file.lastModified())
 
-    FileItem(name = file.name, size = size, lastModified = lastModified)
-}
+    val fileEntity = MainActivity.app.filesDao.getFileByPath(file.absolutePath)
+    val isModified = if (fileEntity != null) {
+        println("path: ${file.absolutePath}, oldHash: ${fileEntity.oldHash}, newHash: ${fileEntity.newHash}")
 
-// -----------------------------------------------------------------------------------------------------------------
-@Composable
-fun FileItem(
-    name: String,
-    size: String,
-    lastModified: String
-) {
-    val fileIcon = getIconForFile(fileName = name)
+        if (fileEntity.oldHash == null)
+            false
+        else
+            fileEntity.oldHash != fileEntity.newHash
+    } else {
+        false
+    }
+
+
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(
+                onClick = openFile(
+                    context = context,
+                    file = file,
+                    lifecycleScope = lifecycleScope
+                )
+            ),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -55,32 +71,28 @@ fun FileItem(
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = name,
+                text = file.name,
                 fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                fontWeight = FontWeight.Bold
             )
             Text(
-                text = "$size | $lastModified",
-                fontSize = 14.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+                text = "$size | $lastModified" + if (isModified) " | обновлен" else "",
+                fontSize = 14.sp
+            )
+        }
+
+        IconButton(
+            onClick = shareFile(
+                context = context,
+                file = file,
+                lifecycleScope = lifecycleScope
+            )
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(id = R.drawable.baseline_share_24),
+                contentDescription = "Share file"
             )
         }
     }
 }
 
-@Composable
-@Preview(showBackground = true)
-fun PreviewFileItem() {
-    LazyColumn {
-        item {
-            FileItem(
-                name = "file_name.txt",
-                size = "1.23 MB",
-                lastModified = "May 7, 2023"
-            )
-        }
-    }
-}

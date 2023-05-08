@@ -7,19 +7,25 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import ru.looprich.filemanager.R
 import ru.looprich.filemanager.ui.FileItem
 import ru.looprich.filemanager.ui.FolderItem
 import ru.looprich.filemanager.ui.UpFolderItem
 import java.io.File
 import java.io.FileFilter
+import java.nio.file.Files
+import java.nio.file.attribute.BasicFileAttributes
 
 // -----------------------------------------------------------------------------------------------------------------
 @Composable
-fun MainScreen() {
-    var sortCriteria by remember { mutableStateOf(SortCriteria.TYPE) }
+fun MainScreen(
+) {
+    var sortCriteria by remember { mutableStateOf(SortCriteria.NAME) }
     var sortOrder by remember { mutableStateOf(SortOrder.ASCENDING) }
 
     var currentFolder: File by remember { mutableStateOf(Environment.getExternalStorageDirectory()) }
@@ -30,6 +36,9 @@ fun MainScreen() {
     val folders =
         allFiles.filter { it.isDirectory }.sortedWith(getComparator(sortCriteria, sortOrder))
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleScope = lifecycleOwner.lifecycleScope
+
     Column {
         Row(
             modifier = Modifier
@@ -38,7 +47,10 @@ fun MainScreen() {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Button(
-                onClick = { sortCriteria = SortCriteria.SIZE },
+                onClick = {
+                    sortCriteria =
+                        if (sortCriteria == SortCriteria.SIZE) SortCriteria.NAME else SortCriteria.SIZE
+                },
                 colors = ButtonDefaults.buttonColors(
                     backgroundColor = if (sortCriteria == SortCriteria.SIZE) MaterialTheme.colors.secondary else MaterialTheme.colors.background,
                     contentColor = if (sortCriteria == SortCriteria.SIZE) MaterialTheme.colors.onSecondary else MaterialTheme.colors.onBackground
@@ -48,7 +60,10 @@ fun MainScreen() {
             }
 
             Button(
-                onClick = { sortCriteria = SortCriteria.DATE },
+                onClick = {
+                    sortCriteria =
+                        if (sortCriteria == SortCriteria.DATE) SortCriteria.NAME else SortCriteria.DATE
+                },
                 colors = ButtonDefaults.buttonColors(
                     backgroundColor = if (sortCriteria == SortCriteria.DATE) MaterialTheme.colors.secondary else MaterialTheme.colors.background,
                     contentColor = if (sortCriteria == SortCriteria.DATE) MaterialTheme.colors.onSecondary else MaterialTheme.colors.onBackground
@@ -58,7 +73,10 @@ fun MainScreen() {
             }
 
             Button(
-                onClick = { sortCriteria = SortCriteria.TYPE },
+                onClick = {
+                    sortCriteria =
+                        if (sortCriteria == SortCriteria.TYPE) SortCriteria.NAME else SortCriteria.TYPE
+                },
                 colors = ButtonDefaults.buttonColors(
                     backgroundColor = if (sortCriteria == SortCriteria.TYPE) MaterialTheme.colors.secondary else MaterialTheme.colors.background,
                     contentColor = if (sortCriteria == SortCriteria.TYPE) MaterialTheme.colors.onSecondary else MaterialTheme.colors.onBackground
@@ -107,7 +125,11 @@ fun MainScreen() {
                 }
             }
             items(files.size) { index ->
-                FileItem(file = files[index])
+                FileItem(
+                    context = LocalContext.current,
+                    file = files[index],
+                    lifecycleScope = lifecycleScope
+                )
             }
         }
     }
@@ -117,8 +139,14 @@ fun MainScreen() {
 // -----------------------------------------------------------------------------------------------------------------
 fun getComparator(sortCriteria: SortCriteria, sortOrder: SortOrder): Comparator<File> {
     return when (sortCriteria) {
+        SortCriteria.NAME -> compareBy<File> { it.name }
         SortCriteria.SIZE -> compareBy<File> { it.length() }
-        SortCriteria.DATE -> compareBy<File> { it.lastModified() }
+        SortCriteria.DATE -> compareBy<File> {
+            Files.readAttributes(
+                it.toPath(),
+                BasicFileAttributes::class.java
+            ).creationTime().toMillis()
+        }
         SortCriteria.TYPE -> compareBy<File> { it.name.substringAfterLast(".") }
     }.let { comparator ->
         if (sortOrder == SortOrder.DESCENDING) comparator.reversed() else comparator
@@ -128,7 +156,7 @@ fun getComparator(sortCriteria: SortCriteria, sortOrder: SortOrder): Comparator<
 
 // -----------------------------------------------------------------------------------------------------------------
 enum class SortCriteria {
-    SIZE, DATE, TYPE
+    NAME, SIZE, DATE, TYPE
 }
 
 // -----------------------------------------------------------------------------------------------------------------
